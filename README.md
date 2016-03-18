@@ -1,2 +1,2 @@
 # CocoaPod-iOS-App-Chains-Swift
-Easily add a customizable File Selector to your app using this CocoPod plugin for Swift iOS apps
+Easily add an ```App-Chains``` functionality using this CocoaPod plugin for Swift iOS apps
