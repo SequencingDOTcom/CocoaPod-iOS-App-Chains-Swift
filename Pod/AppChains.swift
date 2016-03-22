@@ -216,7 +216,7 @@ class AppChains
                     break;
                 case "pdf":
                     let filename:String = String(format: "report_%d.%@", rawResult.jobId, resultPropType)
-                    let reportFileUrl: NSURL = getReportFileUrl(resultPropValue.toInt()!)
+                    let reportFileUrl: NSURL = getReportFileUrl(Int(resultPropValue)!) // resultPropValue.toInt()!
                     
                     let resultValue:ResultValue = FileResultValue(chains: self, name: filename, ext: resultPropType, url: reportFileUrl)
                     results.append(Result(value: resultValue, name: resultPropName))
@@ -264,9 +264,18 @@ class AppChains
     */
     func toJson(data: Dictionary<String, AnyObject>) -> String
     {
-        var error: NSError?
-        let jsonData:NSData = NSJSONSerialization.dataWithJSONObject((data as AnyObject), options: nil, error: &error)!;
-        return NSString(data: jsonData, encoding: NSUTF8StringEncoding)!;
+        // var error: NSError?
+        // let jsonData:NSData = NSJSONSerialization.dataWithJSONObject((data as AnyObject), options: nil, error: &error)!
+        
+        var jsonData: NSData
+        do {
+            jsonData = try NSJSONSerialization.dataWithJSONObject((data as AnyObject), options: [])
+            return String(data: jsonData, encoding: NSUTF8StringEncoding)!
+            
+        } catch let error as NSError {
+            print("json error: \(error.localizedDescription)")
+            return String("")
+        }
     }
     
     /**
@@ -276,7 +285,19 @@ class AppChains
     */
     func fromJson(data: String) -> Dictionary<String, AnyObject>
     {
-        return NSJSONSerialization.JSONObjectWithData((data as NSString).dataUsingEncoding(NSUTF8StringEncoding)!, options: NSJSONReadingOptions.MutableContainers, error: nil) as Dictionary<String, AnyObject>
+        // return NSJSONSerialization.JSONObjectWithData((data as NSString).dataUsingEncoding(NSUTF8StringEncoding)!, options: NSJSONReadingOptions.MutableContainers, error: nil) as Dictionary<String, AnyObject>
+        
+        var dictionary = [String: AnyObject]()
+        let dataEncoded = data.dataUsingEncoding(NSUTF8StringEncoding)
+        
+        do {
+            dictionary = try NSJSONSerialization.JSONObjectWithData(dataEncoded!, options: []) as! Dictionary<String, AnyObject>
+            
+        } catch let error as NSError {
+            print("json error: \(error.localizedDescription)")
+        }
+        
+        return dictionary
     }
     
     /**
@@ -308,7 +329,7 @@ class AppChains
     {
         while (true)
         {
-            var rawResult = getRawJobResult(job)
+            let rawResult = getRawJobResult(job)
             
             if let data = rawResult.value
             {
@@ -338,8 +359,8 @@ class AppChains
         if let v = response.value
         {
             var decodedResponse:Dictionary<String, AnyObject> = fromJson(v.responseData)
-            var resultProps = decodedResponse["ResultProps"] as Array<Dictionary<String, AnyObject>>
-            var status = decodedResponse["Status"] as Dictionary<String, AnyObject>
+            let resultProps = decodedResponse["ResultProps"] as! Array<Dictionary<String, AnyObject>>
+            var status = decodedResponse["Status"] as! Dictionary<String, AnyObject>
 
             var succeeded:Bool = false
             
@@ -347,9 +368,9 @@ class AppChains
                 succeeded = s;
             }
             
-            let jobStatus:String = status["Status"] as String
+            let jobStatus:String = status["Status"] as! String
             
-            var result: RawReportJobResult = RawReportJobResult(jobId: job.jobId)
+            let result: RawReportJobResult = RawReportJobResult(jobId: job.jobId)
             result.source = decodedResponse
             result.succeeded = succeeded
             result.completed = jobStatus.lowercaseString == "completed" || jobStatus.lowercaseString == "failed"
@@ -397,6 +418,7 @@ class AppChains
         return ReturnValue.Failure(response.error!)
     }
     
+    
     /**
     * Executes HTTP request of the specified type
     * @param method HTTP method (GET/POST)
@@ -406,10 +428,9 @@ class AppChains
     */
     func httpRequest(method: String, url: NSURL, body: String) -> ReturnValue<HttpResponse>
     {
-        var connection: NSURLRequest? = nil
+        var connection: NSURLRequest // ? = nil
         
-        switch method.lowercaseString
-        {
+        switch method.lowercaseString {
             case "post":
                 connection = openHttpPostConnection(url, body: body)
                 break
@@ -421,31 +442,92 @@ class AppChains
         }
         
         var rawResponse: NSURLResponse?
-        var error: NSErrorPointer = nil
+        var data: NSData
+
+        do {
+            data = try NSURLConnection.sendSynchronousRequest(connection, returningResponse: &rawResponse)
+            
+            let response: NSHTTPURLResponse = rawResponse as! NSHTTPURLResponse
+            let reply = NSString(data: data, encoding: NSUTF8StringEncoding) as! String
+            
+            return ReturnValue<HttpResponse>.Success(HttpResponse(responseCode: response.statusCode, responseData: reply));
+            
+        } catch (let error as NSError) {
+            print("json error: \(error.localizedDescription)")
+        }
         
-        if let data = NSURLConnection.sendSynchronousRequest(connection!, returningResponse: &rawResponse, error: error)
-        {
-            let response: NSHTTPURLResponse = rawResponse as NSHTTPURLResponse
+        /**
+        * Old implementation with sync request via sendSynchronousRequest
+        */
+        /*
+        if let data = NSURLConnection.sendSynchronousRequest(connection!, returningResponse: &rawResponse, error: error) {
+            let response: NSHTTPURLResponse = rawResponse as! NSHTTPURLResponse
             var reply = NSString(data: data, encoding: NSUTF8StringEncoding)
             
             return ReturnValue<HttpResponse>.Success(HttpResponse(responseCode: response.statusCode, responseData: reply!));
+        } */
+        
+        
+        /**
+         * New implementation with async request via NSURLSession.sharedSession().dataTaskWithRequest(connection)
+         */
+        /*
+        let dataTask: NSURLSessionDataTask = NSURLSession.sharedSession().dataTaskWithRequest(connection) { (data, rawResponse, error) -> Void in
+            if data != nil {
+                let response: NSHTTPURLResponse = rawResponse as! NSHTTPURLResponse
+                let reply = NSString(data: data!, encoding: NSUTF8StringEncoding)
+        
+                return ReturnValue<HttpResponse> = ReturnValue<HttpResponse>.Success(responseCode: response.statusCode, responseData: reply! as String);
+            }
         }
+        dataTask.resume() */
 
         return ReturnValue.Failure("Unable to read response from the Appchains server")
     }
     
+    
     func downloadFile(url: NSURL, path:String) -> ReturnValue<Bool>
     {
-        var connection: NSURLRequest = openHttpGetConnection(url);
+        let connection: NSURLRequest = openHttpGetConnection(url);
+        var rawResponse: NSURLResponse?
+        var data: NSData
         
+        do {
+            data = try NSURLConnection.sendSynchronousRequest(connection, returningResponse: &rawResponse)
+            
+            data.writeToFile(path, atomically: true);
+            return ReturnValue<Bool>.Success(true);
+            
+        } catch (let error as NSError) {
+            print("json error: \(error.localizedDescription)")
+        }
+        
+        /**
+        * Old implementation with sync request via sendSynchronousRequest
+        */
+        /*
         if let data = NSURLConnection.sendSynchronousRequest(connection, returningResponse: nil, error: nil)
         {
             data.writeToFile(path, atomically: true);
             return ReturnValue<Bool>.Success(true);
+        } */
+        
+        
+        /**
+        * New implementation with async request via NSURLSession.sharedSession().dataTaskWithRequest(connection)
+        */
+        /*
+        let dataTask: NSURLSessionDataTask = NSURLSession.sharedSession().dataTaskWithRequest(connection) { (data, returningResponse, error) -> Void in
+            if data != nil {
+                data!.writeToFile(path, atomically: true);
+                return ReturnValue<Bool>.Success(true);
+            }
         }
+        dataTask.resume() */
         
         return ReturnValue.Failure("Unable to read data from the Appchains server")
     }
+    
     
     /**
     * Constructs URL for getting report file
@@ -454,7 +536,7 @@ class AppChains
     */
     func getReportFileUrl(fileId: Int) -> NSURL
     {
-        return NSURL(string: NSString(format: "%@/GetReportFile?id=%d", getBaseAppChainsUrl(), fileId))!;
+        return NSURL(string: String(format: "%@/GetReportFile?id=%d", getBaseAppChainsUrl(), fileId))!;
     }
     
     /**
@@ -464,7 +546,7 @@ class AppChains
     */
     func getJobResultsUrl(jobId: Int) -> NSURL
     {
-        return NSURL(string: NSString(format: "%@/GetAppResults?idJob=%d", getBaseAppChainsUrl(), jobId))!;
+        return NSURL(string: String(format: "%@/GetAppResults?idJob=%d", getBaseAppChainsUrl(), jobId))!;
     }
     
     /**
@@ -474,7 +556,7 @@ class AppChains
     */
     func getJobSubmissionUrl(applicationMethodName: String) -> NSURL
     {
-        return NSURL(string: NSString(format: "%@/%@", getBaseAppChainsUrl(), applicationMethodName))!;
+        return NSURL(string: String(format: "%@/%@", getBaseAppChainsUrl(), applicationMethodName))!;
     }
     
     /**
@@ -483,7 +565,7 @@ class AppChains
     */
     func getBaseAppChainsUrl() -> String
     {
-        return NSString(format: "%@://%@:%d/%@", AppChainsConfig.DEFAULT_APPCHAINS_SCHEMA,
+        return String(format: "%@://%@:%d/%@", AppChainsConfig.DEFAULT_APPCHAINS_SCHEMA,
             self.chainsHostname, AppChainsConfig.DEFAULT_APPCHAINS_PORT, AppChainsConfig.PROTOCOL_VERSION);
     }
     
@@ -495,7 +577,7 @@ class AppChains
     */
     func getBeaconUrl(methodName: String, queryString: String) -> NSURL
     {
-        return NSURL(string: NSString(format: "%@://%@:%d/%@/?%@",
+        return NSURL(string: String(format: "%@://%@:%d/%@/?%@",
             AppChainsConfig.DEFAULT_APPCHAINS_SCHEMA, AppChainsConfig.BEACON_HOSTNAME, AppChainsConfig.DEFAULT_APPCHAINS_PORT,
             methodName, queryString))!;
     }
@@ -528,7 +610,7 @@ class AppChains
     */
     func urlEncode(v: String) -> String
     {
-        var encodedMessage = v.stringByAddingPercentEncodingWithAllowedCharacters(
+        let encodedMessage = v.stringByAddingPercentEncodingWithAllowedCharacters(
             NSCharacterSet.URLHostAllowedCharacterSet())
         
         return encodedMessage!
@@ -581,7 +663,7 @@ class AppChains
     */
     func isNumeric(data: String) -> Bool
     {
-        return data.toInt() != nil
+        return Int(data) != nil // data.toInt()
     }
 }
 
@@ -657,7 +739,7 @@ class FileResultValue: ResultValue
     
     func saveTo(location: String) -> ReturnValue<Bool>
     {
-        return saveAs(NSString(format: "%@/%@", location, self.name));
+        return saveAs(String(format: "%@/%@", location, self.name));
     }
 }
 
@@ -709,6 +791,12 @@ class HttpResponse
 {
     var responseCode: Int
     var responseData: String
+
+    /*
+    init () {
+        
+    } */
+
     
     init (responseCode: Int, responseData: String)
     {
@@ -719,7 +807,7 @@ class HttpResponse
 
 enum ReturnValue<T>
 {
-    case Success(@autoclosure() -> T)
+    case Success(T)
     case Failure(String)
 
     var error: String? {
@@ -735,7 +823,7 @@ enum ReturnValue<T>
     var value: T? {
         switch self {
         case .Success(let value):
-            return value()
+            return value
             
         default:
             return nil
