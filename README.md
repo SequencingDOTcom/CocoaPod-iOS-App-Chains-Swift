@@ -129,28 +129,28 @@ Adding code to the project:
 
 After that you can start utilizing Reporting API: example
 
-	```
-	let appChainsManager = AppChains.init(token: accessToken as String, chainsHostname: "api.sequencing.com")
+```
+let appChainsManager = AppChains.init(token: accessToken as String, chainsHostname: "api.sequencing.com")
 	
-	let returnValue: ReturnValue<Report> = appChainsManager.getReport("StartApp", applicationMethodName: "your chain number", datasourceId: "your fileID value"  as String)
+let returnValue: ReturnValue<Report> = appChainsManager.getReport("StartApp", applicationMethodName: "your chain number", datasourceId: "your fileID value"  as String)
 	
-	switch returnValue {
+switch returnValue {
             
-       	    case .Success(let value):
-           	    let report: Report = value
+	case .Success(let value):
+    	let report: Report = value
                
-               	for result: Result in report.results {
-               		let resultValue: ResultValue = result.value
+        for result: Result in report.results {
+        	let resultValue: ResultValue = result.value
                		
-               		if resultValue.type == ResultType.TEXT {
-               			print(result.name + " = " + (resultValue as! TextResultValue).data)
-               		}
-                }
-            
-	        case .Failure(let error):
-	        	print("Error occured while getting genetic information: " + error)
-	}
-	```
+            if resultValue.type == ResultType.TEXT {
+            	print(result.name + " = " + (resultValue as! TextResultValue).data)
+            }
+        }
+    
+    case .Failure(let error):
+    	print("Error occured while getting genetic information: " + error)
+}
+```
 
 
 Troubleshooting
