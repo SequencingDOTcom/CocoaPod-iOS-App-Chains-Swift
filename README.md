@@ -52,9 +52,12 @@ Please follow this guide to install App-Chain module in your existed or new proj
 
 * see general CocoaPods instruction: ```https://cocoapods.org > getting started```
 	
-* "App-Chains" CocoaPods plugin prepared as separate module, but it depends on a Token object from OAuth plugin. App-Chains can execute request to server for genetic information with token object only. Thus you need 2 modules to be installed and set up: ```OAuth``` and ```App-Chains``` modules
+* "App-Chains" CocoaPods plugin prepared as separate module, but it depends on a Token object from OAuth plugin. And it needed fileID which you can get with selecting genetic file via File Selector plugin. 
+App-Chains can execute request to server for genetic information with token object and fileID value.
+Thus you need 3 modules to be installed and set up: ```OAuth```, ```File Selector``` and ```App-Chains```
 
-* reference to OAuth CocoaPods plugin: [OAuth plugin Swift (CocoaPods plugin)](https://github.com/SequencingDOTcom/CocoaPod-iOS-OAuth-Swift)
+* reference to [OAuth plugin Swift (CocoaPods plugin)](https://github.com/SequencingDOTcom/CocoaPod-iOS-OAuth-Swift)
+* reference to [File Selector plugin Swift (CocoaPods plugin)](https://github.com/SequencingDOTcom/CocoaPod-iOS-File-Selector-Swift)
 	
 * create a new project in Xcode
 	
@@ -68,6 +71,7 @@ Please follow this guide to install App-Chain module in your existed or new proj
 
 	```
 	pod 'sequencing-oauth-api-swift', '~> 1.0.3'
+	pod 'sequencing-file-selector-api-swift', '~> 1.0.1'
 	pod 'sequencing-app-chains-api-swift', '~> 1.0.1'
 	```		
 		
@@ -86,7 +90,8 @@ Please follow this guide to install App-Chain module in your existed or new proj
 
 Configuration
 ======================================
-* set up OAuth plugin: reference to OAuth CocoaPods plugin: [OAuth plugin Swift (CocoaPods plugin)](https://github.com/SequencingDOTcom/CocoaPod-iOS-OAuth-Swift)
+* set up OAuth plugin: reference to [OAuth plugin Swift (CocoaPods plugin)](https://github.com/SequencingDOTcom/CocoaPod-iOS-OAuth-Swift)
+* set up File Selector plugin: [File Selector plugin Swift (CocoaPods plugin)](https://github.com/SequencingDOTcom/CocoaPod-iOS-File-Selector-Swift)
 
 * configuration for App-Chains: code snippets below contain the following three placeholders. Please make sure to replace each of the placeholders with real values:
 * ```<your token>``` 
@@ -125,26 +130,26 @@ Adding code to the project:
 After that you can start utilizing Reporting API: example
 
 	```
-		let appChainsManager = AppChains.init(token: accessToken as String, chainsHostname: "api.sequencing.com")
+	let appChainsManager = AppChains.init(token: accessToken as String, chainsHostname: "api.sequencing.com")
 	
-		let returnValue: ReturnValue<Report> = appChainsManager.getReport("StartApp", applicationMethodName: "Chain88", datasourceId: self.fileID as String)
+	let returnValue: ReturnValue<Report> = appChainsManager.getReport("StartApp", applicationMethodName: "your chain number", datasourceId: "your fileID value"  as String)
 	
-		switch returnValue {
+	switch returnValue {
             
-        	    case .Success(let value):
-            	    let report: Report = value
-                
-                	for result: Result in report.results {
-	                    let resultValue: ResultValue = result.value
-                    
-    	                if resultValue.type == ResultType.TEXT {
-        	                print(result.name + " = " + (resultValue as! TextResultValue).data)
-            	        }
-                	}
+       	    case .Success(let value):
+           	    let report: Report = value
+               
+               	for result: Result in report.results {
+               		let resultValue: ResultValue = result.value
+               		
+               		if resultValue.type == ResultType.TEXT {
+               			print(result.name + " = " + (resultValue as! TextResultValue).data)
+               		}
+                }
             
-	            case .Failure(let error):
-    	            print("Error occured while getting genetic information: " + error)
-	    }
+	        case .Failure(let error):
+	        	print("Error occured while getting genetic information: " + error)
+	}
 	```
 
 
