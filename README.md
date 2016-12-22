@@ -72,7 +72,7 @@ Thus you need 3 modules to be installed and set up: ```OAuth```, ```File Selecto
 	```
 	pod 'sequencing-oauth-api-swift', '~> 1.0.3'
 	pod 'sequencing-file-selector-api-swift', '~> 1.0.1'
-	pod 'sequencing-app-chains-api-swift', '~> 1.0.1'
+	pod 'sequencing-app-chains-api-swift', '~> 2.0.0'
 	```		
 		
 * install the dependency in your project: 
@@ -110,46 +110,67 @@ Configuration
 
 ### Swift
 
+AppChain module contains framework with encapsulated logic inside (build on Objective-C language).
 AppChains Swift API overview
 
 Method  | Purpose | Arguments | Description
 ------------- | ------------- | ------------- | -------------
-`init(token: String, chainsHostname: String)`  | Constructor | **token** - security token provided by sequencing.com <br> **chainsHostname** - API server hostname. api.sequencing.com by default | Constructor used for creating AppChains class instance in case reporting API is needed and where security token is required
-`func getReport(remoteMethodName: String, applicationMethodName: String, datasourceId: String) -> ReturnValue<Report>`  | Reporting API | **remoteMethodName** - REST endpoint name, use "StartApp" <br> **applicationMethodName** - name of data processing routine <br> **datasourceId** - input data identifier <br>
+`init(token: String, withHostName: String)`  | Constructor | **token** - security token provided by sequencing.com <br> **Hostname** - API server hostname. api.sequencing.com by default | Constructor used for creating AppChains class instance in case reporting API is needed and where security token is required
+`func getReportWithRemoteMethodName(remoteMethodName: String!, withRequestBody: String!, withSuccessBlock: ((Report!) -> Void), withFailureBlock: ((NSError!) -> Void)! )`   | Reporting API | **remoteMethodName** - REST endpoint name, use "StartApp" <br> **applicationMethodName** - name of data processing routine <br> **datasourceId** - input data identifier <br>
 
-Prerequisites:
-* Swift v2 compatible compiler
 
 Adding code to the project:
-* add import 
+
+* first of all you need to create bridging header file.
+	Select File > New > File > Header File > name it as
 
 	```
-	import sequencing_app_chains_api_swift
+	project-name-Bridging-Header.h
+	```
+
+* add AppChains class import in the bridging header file
+
+	```
+	#import <AppChainsLibrary/AppChains.h>
+	```
+
+* register your bridging header file in the project settings.
+	Select your project > project target > Build Settings > Objective-C Bridging Header
+	specify path for bridging header file
+
+	```
+	$(PROJECT_DIR)/project-name-Bridging-Header.h
 	```
 
 After that you can start utilizing Reporting API: example
 
 ```
-let appChainsManager = AppChains.init(token: accessToken as String, chainsHostname: "api.sequencing.com")
-	
-let returnValue: ReturnValue<Report> = appChainsManager.getReport("StartApp", applicationMethodName: "your chain number", datasourceId: "your fileID value"  as String)
-	
-switch returnValue {
+let appChainsManager = AppChains.init(token: accessToken as String, withHostName: "api.sequencing.com")
+
+appChainsManager.getReportWithRemoteMethodName("StartApp", withApplicationMethodName: "your chain number", withDatasourceId: "your fileID value" , withSuccessBlock: { (result) in
+            let resultReport = result as Report;
             
-	case .Success(let value):
-    	let report: Report = value
-               
-        for result: Result in report.results {
-        	let resultValue: ResultValue = result.value
-               		
-            if resultValue.type == ResultType.TEXT {
-            	print(result.name + " = " + (resultValue as! TextResultValue).data)
+            if resultReport.isSucceeded() {
+                
+                if resultReport.getResults() != nil {
+                    for item: AnyObject in resultReport.getResults() {
+                        
+                        let resultObj = item as! Result
+                        let resultValue: ResultValue = resultObj.getValue()
+                        
+                        if resultValue.getType() == ResultType.Text {
+                            print(resultObj.getName() + " = " + (resultValue as! TextResultValue).getData())
+                        }
+                    }
+                }   
+            } else {
+                print("Error occured while getting genetic information")
             }
-        }
-    
-    case .Failure(let error):
-    	print("Error occured while getting genetic information: " + error)
-}
+            
+        }) { (error) in
+            print("Error occured while getting genetic information. " + error.localizedDescription)
+
+        }	           
 ```
 
 
