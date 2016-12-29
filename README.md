@@ -70,9 +70,7 @@ Thus you need 3 modules to be installed and set up: ```OAuth```, ```File Selecto
 * specify following parameters in Podfile: 
 
 	```
-	pod 'sequencing-oauth-api-swift', '~> 1.0.3'
-	pod 'sequencing-file-selector-api-swift', '~> 1.0.1'
-	pod 'sequencing-app-chains-api-swift', '~> 2.0.0'
+	pod 'sequencing-app-chains-api-swift', '~> 2.1.0'
 	```		
 		
 * install the dependency in your project: 
@@ -116,8 +114,8 @@ AppChains Swift API overview
 Method  | Purpose | Arguments | Description
 ------------- | ------------- | ------------- | -------------
 `init(token: String, withHostName: String)`  | Constructor | **token** - security token provided by sequencing.com <br> **Hostname** - API server hostname. api.sequencing.com by default | Constructor used for creating AppChains class instance in case reporting API is needed and where security token is required
-`func getReportWithRemoteMethodName(remoteMethodName: String!, withRequestBody: String!, withSuccessBlock: ((Report!) -> Void), withFailureBlock: ((NSError!) -> Void)! )`   | Reporting API | **remoteMethodName** - REST endpoint name, use "StartApp" <br> **applicationMethodName** - name of data processing routine <br> **datasourceId** - input data identifier <br>
-
+`func getReportWithApplicationMethodName(applicationMethodName: String!, withDatasourceId: String!, withSuccessBlock: ((Report!) -> Void)!, withFailureBlock: ((NSError!) -> Void)!)`   | Reporting API | **applicationMethodName** - name of data processing routine<br><br>**datasourceId** - input data identifier<br><br>**success** - callback executed on success operation, results with `Report` object<br><br>**failure** - callback executed on operation failure
+`func getBatchReportWithApplicationMethodName(appChainsParams: [AnyObject]!, withSuccessBlock: ReportsArray!, withFailureBlock: ((NSError!) -> Void)!)`   | Reporting API with batch request | **appChainsParams** - array of params for batch request.<br>Each param should be an array with 2 items:<br>first object - `applicationMethodName`<br>last object - `datasourceId`<br><br>**success** - callback executed on success operation, results with ReportsArray as array of dictionaries.<br>Each dictionary has following keys and objects:<br>`appChainID` - appChain ID string<br>`report` - Report object<br><br>**failure** - callback executed on operation failure
 
 Adding code to the project:
 
@@ -142,16 +140,15 @@ Adding code to the project:
 	$(PROJECT_DIR)/project-name-Bridging-Header.h
 	```
 
-After that you can start utilizing Reporting API: example
+After that you can start utilizing Reporting API for single chain request, example:
 
 ```
 let appChainsManager = AppChains.init(token: accessToken as String, withHostName: "api.sequencing.com")
 
-appChainsManager.getReportWithRemoteMethodName("StartApp", withApplicationMethodName: "your chain number", withDatasourceId: "your fileID value" , withSuccessBlock: { (result) in
-            let resultReport = result as Report;
+appChainsManager.getReportWithApplicationMethodName("Chain88", withDatasourceId: fileID, withSuccessBlock: { (result) in
+            let resultReport: Report = result as Report!
             
-            if resultReport.isSucceeded() {
-                
+            if resultReport.isSucceeded() {    
                 if resultReport.getResults() != nil {
                     for item: AnyObject in resultReport.getResults() {
                         
@@ -167,11 +164,49 @@ appChainsManager.getReportWithRemoteMethodName("StartApp", withApplicationMethod
                 print("Error occured while getting genetic information")
             }
             
-        }) { (error) in
-            print("Error occured while getting genetic information. " + error.localizedDescription)
+            
 
-        }	           
+            
+            }) { (error) in
+            	print("Error occured while getting genetic information. " + error.localizedDescription)
+        }
+        
 ```
+
+
+Example of using batch request API for several chains:
+
+```
+let appChainsManager = AppChains.init(token: accessToken as String, withHostName: "api.sequencing.com")
+
+let appChainsForRequest: NSArray = [["Chain88", fileID],
+									["Chain9", fileID]]
+
+appChainsManager.getBatchReportWithApplicationMethodName(appChainsForRequest as [AnyObject], withSuccessBlock: { (resultsArray) in
+            let reportResultsArray = resultsArray as NSArray
+            
+            for appChainReport in reportResultsArray {
+                let appChainReportDict = appChainReport as! NSDictionary
+                let resultReport: Report = appChainReportDict.objectForKey("report") as! Report;
+                let appChainID: NSString = appChainReportDict.objectForKey("appChainID") as! NSString;
+                
+                if appChainID.isEqualToString("Chain88") {
+                    appChainValue = self.parseReportForChain88(resultReport) // your own method to parse report object
+                    print(appChainValue)
+                    
+                } else if appChainID.isEqualToString("Chain9") {
+                    appChainValue = self.parseReportForChain9(resultReport) // your own method to parse report object
+                    print(appChainValue)
+                }   
+            }
+            
+        }) { (error) in
+            print("batch request error. " + error.localizedDescription)
+            completion(appchainsResults: nil)
+        }
+```
+
+
 
 
 Troubleshooting
