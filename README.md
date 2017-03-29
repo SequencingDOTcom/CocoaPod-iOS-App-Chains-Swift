@@ -146,31 +146,27 @@ After that you can start utilizing Reporting API for single chain request, examp
 let appChainsManager = AppChains.init(token: accessToken as String, withHostName: "api.sequencing.com")
 
 appChainsManager.getReportWithApplicationMethodName("Chain88", withDatasourceId: fileID, withSuccessBlock: { (result) in
-            let resultReport: Report = result as Report!
-            
-            if resultReport.isSucceeded() {    
-                if resultReport.getResults() != nil {
-                    for item: AnyObject in resultReport.getResults() {
-                        
-                        let resultObj = item as! Result
-                        let resultValue: ResultValue = resultObj.getValue()
-                        
-                        if resultValue.getType() == ResultType.Text {
-                            print(resultObj.getName() + " = " + (resultValue as! TextResultValue).getData())
-                        }
-                    }
-                }   
-            } else {
-                print("Error occured while getting genetic information")
-            }
-            
-            
-
-            
-            }) { (error) in
-            	print("Error occured while getting genetic information. " + error.localizedDescription)
-        }
-        
+		let resultReport: Report = result as Report!
+		
+		if resultReport.isSucceeded() {    
+			if resultReport.getResults() != nil {
+				for item: AnyObject in resultReport.getResults() {
+					
+					let resultObj = item as! Result
+					let resultValue: ResultValue = resultObj.getValue()
+					
+					if resultValue.getType() == ResultType.Text {
+						print(resultObj.getName() + " = " + (resultValue as! TextResultValue).getData())
+					}
+				}
+			}
+		} else {
+			print("Error occured while getting genetic information")
+		}
+		
+    }) { (error) in
+    	print("Error occured while getting genetic information. " + error.localizedDescription)
+    }    
 ```
 
 
@@ -179,31 +175,31 @@ Example of using batch request API for several chains:
 ```
 let appChainsManager = AppChains.init(token: accessToken as String, withHostName: "api.sequencing.com")
 
-let appChainsForRequest: NSArray = [["Chain88", fileID],
-									["Chain9", fileID]]
+let appChainsForRequest: NSArray = [["Chain88", fileID], ["Chain9", fileID]]
 
 appChainsManager.getBatchReportWithApplicationMethodName(appChainsForRequest as [AnyObject], withSuccessBlock: { (resultsArray) in
-            let reportResultsArray = resultsArray as NSArray
-            
-            for appChainReport in reportResultsArray {
-                let appChainReportDict = appChainReport as! NSDictionary
-                let resultReport: Report = appChainReportDict.objectForKey("report") as! Report;
-                let appChainID: NSString = appChainReportDict.objectForKey("appChainID") as! NSString;
-                
-                if appChainID.isEqualToString("Chain88") {
-                    appChainValue = self.parseReportForChain88(resultReport) // your own method to parse report object
-                    print(appChainValue)
-                    
-                } else if appChainID.isEqualToString("Chain9") {
-                    appChainValue = self.parseReportForChain9(resultReport) // your own method to parse report object
-                    print(appChainValue)
-                }   
-            }
-            
-        }) { (error) in
-            print("batch request error. " + error.localizedDescription)
-            completion(appchainsResults: nil)
+		let reportResultsArray = resultsArray as NSArray
+		
+		for appChainReport in reportResultsArray {
+			
+			let appChainReportDict = appChainReport as! NSDictionary
+			let resultReport: Report = appChainReportDict.objectForKey("report") as! Report;
+			let appChainID: NSString = appChainReportDict.objectForKey("appChainID") as! NSString;
+			
+			if appChainID.isEqualToString("Chain88") {
+				appChainValue = self.parseReportForChain88(resultReport) // your own method to parse report object
+				print(appChainValue)
+			
+			} else if appChainID.isEqualToString("Chain9") {
+				appChainValue = self.parseReportForChain9(resultReport) // your own method to parse report object
+				print(appChainValue)
+			}   
         }
+            
+    }) { (error) in
+    	print("batch request error. " + error.localizedDescription)
+    	completion(appchainsResults: nil)
+	}
 ```
 
 
