@@ -145,7 +145,7 @@ After that you can start utilizing Reporting API for single chain request, examp
 ```
 let appChainsManager = AppChains.init(token: accessToken as String, withHostName: "api.sequencing.com")
 
-appChainsManager.getReportWithApplicationMethodName("Chain88", withDatasourceId: fileID, withSuccessBlock: { (result) in
+appChainsManager.getReportWithApplicationMethodName("<chain id>", withDatasourceId: "<file id>", withSuccessBlock: { (result) in
 		let resultReport: Report = result as Report!
 		
 		if resultReport.isSucceeded() {    
