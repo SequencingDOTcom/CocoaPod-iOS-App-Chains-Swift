@@ -175,7 +175,7 @@ Example of using batch request API for several chains:
 ```
 let appChainsManager = AppChains.init(token: accessToken as String, withHostName: "api.sequencing.com")
 
-let appChainsForRequest: NSArray = [["Chain88", fileID], ["Chain9", fileID]]
+let appChainsForRequest: NSArray = [["<chain id>", "<file id>"], ["<chain id>", "<file id>"]]
 
 appChainsManager.getBatchReportWithApplicationMethodName(appChainsForRequest as [AnyObject], withSuccessBlock: { (resultsArray) in
 		let reportResultsArray = resultsArray as NSArray
@@ -186,14 +186,19 @@ appChainsManager.getBatchReportWithApplicationMethodName(appChainsForRequest as 
 			let resultReport: Report = appChainReportDict.objectForKey("report") as! Report;
 			let appChainID: NSString = appChainReportDict.objectForKey("appChainID") as! NSString;
 			
-			if appChainID.isEqualToString("Chain88") {
-				appChainValue = self.parseReportForChain88(resultReport) // your own method to parse report object
-				print(appChainValue)
+			print(appChainID)
 			
-			} else if appChainID.isEqualToString("Chain9") {
-				appChainValue = self.parseReportForChain9(resultReport) // your own method to parse report object
-				print(appChainValue)
-			}   
+			if resultReport.getResults() != nil {
+				for item: AnyObject in resultReport.getResults() {
+					
+					let resultObj = item as! Result
+					let resultValue: ResultValue = resultObj.getValue()
+					
+					if resultValue.getType() == ResultType.Text {
+						print(resultObj.getName() + " = " + (resultValue as! TextResultValue).getData())
+					}
+				}
+			}  
         }
             
     }) { (error) in
